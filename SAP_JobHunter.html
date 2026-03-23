@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAP Job Hunter — Manasi Chaudhari</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;background:#F2F1ED;color:#1C1C1A;font-family:'IBM Plex Mono',monospace;font-size:13px}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:#E8E6E0}::-webkit-scrollbar-thumb{background:#C8C6BC;border-radius:3px}
+a{text-decoration:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.25}}
+@keyframes progressBar{from{width:0%}to{width:100%}}
+
+/* Layout */
+#header{border-bottom:1px solid #E0DED6;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;background:#fff}
+#config-bar{padding:8px 28px;background:#F8F7F3;border-bottom:1px solid #E0DED6;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#source-bar{padding:10px 28px;background:#fff;border-bottom:1px solid #E0DED6;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+#search-bar{padding:12px 28px;border-bottom:1px solid #E0DED6;background:#F8F7F3;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#progress-panel{display:none;padding:12px 28px;background:#F8F7F3;border-bottom:1px solid #E0DED6}
+#filter-bar{padding:8px 28px;border-bottom:1px solid #E0DED6;display:none;gap:6px;align-items:center;flex-wrap:wrap;background:#fff}
+#job-grid{padding:20px 28px;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+
+/* Inputs */
+.cfg-input{background:#fff;border:1px solid #D4D2CA;border-radius:3px;padding:7px 11px;font-size:10px;color:#1C1C1A;font-family:'IBM Plex Mono',monospace;outline:none}
+.cfg-input:focus{border-color:#C88010}
+.cfg-input::placeholder{color:#AEAC9E}
+.cfg-label{font-size:9px;color:#AEAC9E;letter-spacing:1px;white-space:nowrap}
+
+/* Buttons */
+.btn-primary{background:#C88010;color:#fff;border:none;border-radius:3px;padding:9px 18px;font-size:10px;font-family:'IBM Plex Mono',monospace;font-weight:600;letter-spacing:1.5px;cursor:pointer;transition:background .15s;white-space:nowrap}
+.btn-primary:hover{background:#A86C08}
+.btn-primary:disabled{background:#D4D2CA;color:#A0A090;cursor:not-allowed}
+.btn-ghost{background:transparent;color:#888;border:1px solid #D4D2CA;border-radius:3px;padding:7px 12px;font-size:10px;font-family:'IBM Plex Mono',monospace;letter-spacing:1px;cursor:pointer;transition:all .15s}
+.btn-ghost:hover{border-color:#C88010;color:#C88010}
+.btn-sm{padding:4px 10px;font-size:9px;letter-spacing:.8px}
+.pill{background:transparent;color:#A0A090;border:1px solid #D4D2CA;border-radius:2px;padding:4px 10px;font-size:9px;font-family:'IBM Plex Mono',monospace;font-weight:600;letter-spacing:1.2px;cursor:pointer;transition:all .12s}
+.pill:hover{border-color:#C8801070;color:#C88010}
+.pill.active{background:#C88010;color:#fff;border-color:#C88010}
+
+/* Source chips */
+.src-chip{font-size:8px;font-weight:600;letter-spacing:1px;padding:3px 8px;border-radius:2px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.src-chip.ok{color:#1a7a48;background:#2ea86a12;border:1px solid #2ea86a30}
+.src-chip.loading{color:#A06010;background:#C8801012;border:1px solid #C8801030}
+.src-chip.err{color:#B02020;background:#E05A5A0d;border:1px solid #E05A5A28}
+.src-chip.off{color:#B0AE9E;background:#B0AE9E0d;border:1px solid #B0AE9E20}
+
+/* Progress */
+.step-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.step{flex:1;min-width:140px;background:#fff;border:1px solid #E0DED6;border-radius:4px;padding:8px 12px;transition:border-color .3s}
+.step.running{border-color:#C88010}
+.step.done{border-color:#2ea86a40}
+.step.err{border-color:#E05A5A40}
+.step-label{font-size:9px;letter-spacing:1.5px;margin-bottom:4px;color:#B0AE9E}
+.step-detail{font-size:10px;color:#B0AE9E}
+.step.running .step-label{color:#C88010}
+.step.done .step-label{color:#2ea86a}
+.step.err .step-label{color:#C03030}
+.step-bar{height:2px;background:#E8E6DE;border-radius:1px;margin-top:6px;overflow:hidden}
+.step-bar-fill{height:100%;background:#C88010;width:0%;transition:width .4s}
+.step.done .step-bar-fill{width:100%;background:#2ea86a}
+.step.err .step-bar-fill{width:100%;background:#E05A5A}
+.step.running .step-bar-fill{animation:progressBar 12s linear forwards}
+
+/* Cards */
+.card{background:#fff;border:1px solid #E0DED6;border-radius:6px;padding:18px;transition:border-color .15s,box-shadow .15s,transform .15s;animation:fadeUp .2s ease both}
+.card:hover{border-color:#C8801040;box-shadow:0 2px 14px rgba(0,0,0,.07);transform:translateY(-1px)}
+.card.state-saved{border-left:3px solid #5B9CF6}
+.card.state-applied{border-left:3px solid #2ea86a;opacity:.7}
+.card.state-skip{opacity:.3;filter:grayscale(1)}
+
+/* Score */
+.score-wrap{display:flex;flex-direction:column;align-items:center;flex-shrink:0;cursor:pointer}
+.score-num{border-radius:3px;padding:5px 9px;font-size:16px;font-weight:600;min-width:46px;text-align:center;line-height:1}
+.score-high{color:#1a7a48;background:#2ea86a15;border:1px solid #2ea86a35}
+.score-mid{color:#A06010;background:#C8801015;border:1px solid #C8801035}
+.score-low{color:#B02020;background:#E05A5A12;border:1px solid #E05A5A30}
+.score-label{font-size:7px;color:#B0AE9E;letter-spacing:.5px;margin-top:2px}
+
+/* Score breakdown */
+.score-breakdown{display:none;background:#F8F7F3;border:1px solid #E0DED6;border-radius:4px;padding:10px 12px;margin-top:8px;width:100%}
+.score-breakdown.open{display:block}
+.sbd-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.sbd-label{font-size:9px;color:#888;width:70px;flex-shrink:0}
+.sbd-bar-wrap{flex:1;height:5px;background:#E8E6DE;border-radius:2px;overflow:hidden}
+.sbd-bar{height:100%;border-radius:2px;transition:width .4s}
+.sbd-pts{font-size:9px;color:#1C1C1A;font-weight:600;width:32px;text-align:right}
+
+/* Badges */
+.badge{font-size:8px;font-weight:600;letter-spacing:1.5px;padding:2px 7px;border-radius:2px;display:inline-block}
+.b-today{color:#1a7a48;background:#2ea86a15;border:1px solid #2ea86a35}
+.b-2d{color:#2a8a58;background:#2ea86a0d;border:1px solid #2ea86a28}
+.b-3d{color:#A06010;background:#C8801012;border:1px solid #C8801030}
+.b-week{color:#999;background:#9999990d;border:1px solid #99999925}
+.b-unknown{color:#C0BEAD;background:#C0BEAD0d;border:1px solid #C0BEAD25}
+.b-old{color:#B02020;background:#E05A5A0d;border:1px solid #E05A5A28}
+.b-unverified{color:#A06010;background:#C8801012;border:1px solid #C8801030}
+.b-verified-ok{color:#1a7a48;background:#2ea86a15;border:1px solid #2ea86a35}
+.b-verified-de{color:#B02020;background:#E05A5A0d;border:1px solid #E05A5A28}
+.b-unclear{color:#7a6020;background:#C8801008;border:1px solid #C8801020}
+.skill-tag{font-size:9px;color:#888;letter-spacing:.5px;border:1px solid #E0DED6;border-radius:2px;padding:2px 6px;display:inline-block;background:#F8F7F3}
+
+/* State buttons */
+.sb{font-size:9px;font-family:'IBM Plex Mono',monospace;font-weight:600;letter-spacing:1px;padding:4px 9px;border-radius:2px;cursor:pointer;border:1px solid;transition:all .12s;background:transparent}
+.sb-save{color:#5B9CF6;border-color:#5B9CF650}
+.sb-save:hover,.sb-save.on{background:#5B9CF6;color:#fff;border-color:#5B9CF6}
+.sb-apply{color:#2ea86a;border-color:#2ea86a50}
+.sb-apply:hover,.sb-apply.on{background:#2ea86a;color:#fff;border-color:#2ea86a}
+.sb-skip{color:#B0AE9E;border-color:#D4D2CA}
+.sb-skip:hover,.sb-skip.on{background:#ECEAE4;color:#888;border-color:#C0BEAD}
+
+/* Status */
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
+.dot-amber{background:#C88010;animation:pulse 1.2s infinite}
+.dot-green{background:#2ea86a}
+.dot-red{background:#E05A5A}
+.spinner{display:inline-block;animation:spin .8s linear infinite}
+hr{border:none;border-top:1px solid #E0DED6}
+
+/* Discover modal */
+#disc-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:998;padding:20px}
+#disc-overlay.open{display:flex}
+#disc-box{background:#fff;border:1px solid #E0DED6;border-radius:6px;width:100%;max-width:480px;padding:24px}
+
+/* Wizard */
+#wiz-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:999;padding:20px}
+#wiz-overlay.open{display:flex}
+#wiz-box{background:#fff;border:1px solid #E0DED6;border-radius:8px;width:100%;max-width:740px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.12)}
+#wiz-header{padding:20px 28px 0;flex-shrink:0}
+#wiz-steps{display:flex;align-items:center;gap:0;margin-bottom:16px}
+.ws-dot{width:24px;height:24px;border-radius:50%;border:2px solid #E0DED6;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:#B0AE9E;flex-shrink:0;transition:all .2s}
+.ws-dot.done{background:#2ea86a;border-color:#2ea86a;color:#fff}
+.ws-dot.active{background:#C88010;border-color:#C88010;color:#fff}
+.ws-line{flex:1;height:2px;background:#E0DED6}
+.ws-line.done{background:#2ea86a}
+.ws-wrap{display:flex;flex-direction:column;align-items:center}
+.ws-lbl{font-size:8px;letter-spacing:1px;color:#B0AE9E;margin-top:3px}
+#wiz-body{flex:1;overflow-y:auto;padding:0 28px 16px}
+#wiz-nav{padding:14px 28px;border-top:1px solid #E0DED6;display:flex;gap:8px;align-items:center;flex-shrink:0;background:#FAFAF8;border-radius:0 0 8px 8px}
+.wiz-panel{display:none}
+.wiz-panel.active{display:block}
+.wiz-label{font-size:9px;color:#AEAC9E;letter-spacing:1.5px;margin-bottom:8px;margin-top:16px}
+.wiz-label:first-child{margin-top:0}
+.wiz-textarea{width:100%;background:#F8F7F3;border:1px solid #E0DED6;border-radius:4px;padding:12px 14px;font-size:12px;font-family:'IBM Plex Sans',sans-serif;color:#1C1C1A;line-height:1.7;resize:vertical;outline:none;transition:border-color .15s}
+.wiz-textarea:focus{border-color:#C88010}
+.gap-section{background:#F8F7F3;border:1px solid #E0DED6;border-radius:5px;padding:12px 14px;margin-bottom:10px}
+.gap-section-title{font-size:9px;font-weight:600;letter-spacing:1.5px;margin-bottom:8px}
+.gap-match-item{display:flex;align-items:flex-start;gap:8px;margin-bottom:5px;font-size:11px;color:#1C1C1A}
+.gap-match-item::before{content:'✓';color:#2ea86a;font-weight:600;flex-shrink:0}
+.gap-warn-item{margin-bottom:8px}
+.gap-warn-label{font-size:11px;color:#A06010;font-weight:500;margin-bottom:2px;display:flex;align-items:center;gap:6px}
+.gap-warn-label::before{content:'⚠';font-size:10px}
+.gap-warn-sug{font-size:10px;color:#888;margin-left:16px;line-height:1.5}
+.kw-tag{display:inline-block;background:#5B9CF615;border:1px solid #5B9CF635;color:#2a5a9a;font-size:9px;font-weight:600;letter-spacing:.8px;padding:2px 8px;border-radius:2px;margin:2px}
+.tweak-box{border:1px solid #E0DED6;border-radius:5px;overflow:hidden;margin-bottom:8px}
+.tweak-section-label{font-size:9px;color:#C88010;letter-spacing:1.5px;padding:7px 12px;background:#FFF8E6;border-bottom:1px solid #E0DED6;font-weight:600}
+.tweak-old{font-size:11px;color:#B0AE9E;padding:7px 12px;background:#F8F7F3;border-bottom:1px solid #E0DED6;line-height:1.6;text-decoration:line-through}
+.tweak-new{width:100%;border:none;padding:8px 12px;font-size:11px;font-family:'IBM Plex Sans',sans-serif;color:#1C1C1A;line-height:1.6;resize:vertical;background:#fff;outline:none;min-height:56px}
+.export-btn{display:flex;align-items:center;gap:10px;background:#F8F7F3;border:1px solid #E0DED6;border-radius:5px;padding:12px 14px;cursor:pointer;transition:all .15s;width:100%;margin-bottom:8px;font-family:'IBM Plex Mono',monospace}
+.export-btn:hover{border-color:#C88010;background:#FFF8E6}
+.export-btn-icon{font-size:18px;flex-shrink:0}
+.export-btn-title{font-size:11px;font-weight:600;color:#1C1C1A;letter-spacing:.5px;margin-bottom:2px}
+.export-btn-sub{font-size:10px;color:#AEAC9E}
+.log-row{background:#2ea86a12;border:1px solid #2ea86a30;border-radius:5px;padding:10px 14px;margin-top:12px;font-size:11px;color:#1a7a48}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <div>
+    <div style="font-size:9px;color:#C88010;letter-spacing:3px;margin-bottom:3px">SAP CAREER SYSTEM · GERMANY</div>
+    <div style="font-size:18px;font-family:'IBM Plex Sans',sans-serif;font-weight:600;letter-spacing:-.3px;color:#1C1C1A">Job Hunter</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <div style="text-align:right;font-size:9px;color:#B0AE9E;line-height:1.8;margin-right:8px">
+      <div style="color:#888">MANASI CHAUDHARI · SAP MM · BERLIN</div>
+      <div>5Y EXP · ENG C1 · DEU A2</div>
+    </div>
+    <!-- Import JSON button -->
+    <label style="cursor:pointer">
+      <input type="file" id="json-import" accept=".json" style="display:none" onchange="importJSON(this)">
+      <span class="btn-ghost btn-sm">⬆ IMPORT JSON</span>
+    </label>
+  </div>
+</div>
+
+<!-- CONFIG BAR -->
+<div id="config-bar">
+  <span class="cfg-label">GEMINI KEY</span>
+  <input class="cfg-input" id="apikey-input" type="password" placeholder="Google AI Studio key (for scoring + wizard)" autocomplete="off" style="min-width:200px;flex:1">
+  <span class="cfg-label">MODEL</span>
+  <select id="model-select" class="cfg-input" style="width:auto">
+    <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+    <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+  </select>
+  <span class="cfg-label">GITHUB JSON URL</span>
+  <input class="cfg-input" id="github-url" type="text" placeholder="https://raw.githubusercontent.com/YOU/sap-job-hunter/main/jobs_latest.json" style="min-width:260px;flex:2">
+  <span class="cfg-label">SHEETS URL</span>
+  <input class="cfg-input" id="sheets-url" type="text" placeholder="Apps Script web app URL" style="min-width:180px;flex:1">
+  <span id="sheets-status" style="font-size:9px;letter-spacing:.5px;white-space:nowrap;color:#B0AE9E"></span>
+</div>
+
+<!-- SOURCE STATUS BAR -->
+<div id="source-bar">
+  <span style="font-size:9px;color:#AEAC9E;letter-spacing:1px;margin-right:4px">SOURCES</span>
+  <span class="src-chip off" id="src-github">GITHUB JSON</span>
+  <span class="src-chip off" id="src-stepstone">STEPSTONE RSS</span>
+  <span class="src-chip off" id="src-arbeitsagentur">BUNDESAGENTUR</span>
+  <span class="src-chip off" id="src-greenhouse">GREENHOUSE</span>
+  <span class="src-chip off" id="src-lever">LEVER</span>
+  <span class="src-chip off" id="src-gemini">GEMINI</span>
+  <span style="margin-left:auto;display:flex;gap:6px">
+    <button class="btn-ghost btn-sm" onclick="openDiscover()">+ DISCOVER COMPANY</button>
+    <button class="btn-ghost btn-sm" id="manage-btn" onclick="openManageCompanies()">⚙ COMPANIES</button>
+  </span>
+</div>
+
+<!-- SEARCH BAR -->
+<div id="search-bar">
+  <button class="btn-primary" id="search-btn" onclick="startSearch()">▶ FETCH ALL SOURCES</button>
+  <div id="status-row" style="display:none;align-items:center;gap:8px;flex:1">
+    <span id="status-dot" class="dot"></span>
+    <span id="status-text" style="font-size:10px;letter-spacing:1px"></span>
+  </div>
+  <div id="dedup-info" style="display:none;font-size:10px;color:#AEAC9E;margin-left:auto"></div>
+</div>
+
+<!-- PROGRESS -->
+<div id="progress-panel">
+  <div class="step-row" id="step-row"></div>
+</div>
+
+<!-- FILTER BAR -->
+<div id="filter-bar">
+  <button class="pill active" onclick="setFilter('all',this)">ALL</button>
+  <button class="pill" onclick="setFilter('fresh',this)">TODAY / YESTERDAY</button>
+  <button class="pill" onclick="setFilter('high',this)">PRIORITY ≥70</button>
+  <button class="pill" onclick="setFilter('english',this)">ENGLISH OK</button>
+  <button class="pill" onclick="setFilter('remote',this)">REMOTE / HYBRID</button>
+  <button class="pill" onclick="setFilter('saved',this)">SAVED</button>
+  <button class="pill" onclick="setFilter('applied',this)">APPLIED</button>
+  <span id="clabel" style="margin-left:auto;font-size:9px;color:#AEAC9E;letter-spacing:1px"></span>
+</div>
+
+<!-- JOB GRID -->
+<div id="job-grid">
+  <div style="text-align:center;padding:80px 20px;color:#CCCAB8;grid-column:1/-1">
+    <div style="font-size:40px;margin-bottom:12px;opacity:.4">◈</div>
+    <div style="font-size:11px;letter-spacing:3px;margin-bottom:6px;color:#AEAC9E">READY TO FETCH</div>
+    <div style="font-size:9px;color:#C8C6B8;letter-spacing:1px">GITHUB · STEPSTONE · BUNDESAGENTUR · GREENHOUSE · LEVER · GEMINI</div>
+  </div>
+</div>
+
+<!-- DISCOVER MODAL -->
+<div id="disc-overlay" onclick="discBgClose(event)">
+  <div id="disc-box">
+    <div style="font-size:9px;color:#AEAC9E;letter-spacing:2px;margin-bottom:6px">DISCOVER COMPANY ATS</div>
+    <div style="font-size:14px;font-family:'IBM Plex Sans',sans-serif;font-weight:600;margin-bottom:14px;color:#1C1C1A">Find Company Job Feed</div>
+    <div style="font-size:10px;color:#888;margin-bottom:14px;line-height:1.6">
+      Type a company name. The system will find their ATS platform (Greenhouse, Lever, Workday, Personio, Softgarden) and add them to your sources.
+    </div>
+    <input class="cfg-input" id="disc-input" type="text" placeholder="e.g. NTT Data, cbs, Natuvion, BearingPoint..." style="width:100%;margin-bottom:10px">
+    <div id="disc-result" style="display:none;font-size:11px;line-height:1.7;padding:10px 12px;background:#F8F7F3;border:1px solid #E0DED6;border-radius:4px;margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-primary" id="disc-btn" onclick="runDiscover()" style="flex:1">DISCOVER ↗</button>
+      <button class="btn-ghost" onclick="closeDiscover()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- WIZARD MODAL -->
+<div id="wiz-overlay" onclick="wizBgClose(event)">
+<div id="wiz-box">
+  <div id="wiz-header">
+    <div style="font-size:9px;color:#AEAC9E;letter-spacing:2px;margin-bottom:3px">APPLY WIZARD</div>
+    <div id="wiz-job-title" style="font-size:13px;font-family:'IBM Plex Sans',sans-serif;font-weight:600;margin-bottom:2px;color:#1C1C1A"></div>
+    <div id="wiz-job-co" style="font-size:11px;color:#C88010;margin-bottom:14px"></div>
+    <div id="wiz-steps">
+      <div class="ws-wrap"><div class="ws-dot active" id="wd1">1</div><div class="ws-lbl">JD</div></div>
+      <div class="ws-line" id="wl1"></div>
+      <div class="ws-wrap"><div class="ws-dot" id="wd2">2</div><div class="ws-lbl">GAPS</div></div>
+      <div class="ws-line" id="wl2"></div>
+      <div class="ws-wrap"><div class="ws-dot" id="wd3">3</div><div class="ws-lbl">LETTER</div></div>
+      <div class="ws-line" id="wl3"></div>
+      <div class="ws-wrap"><div class="ws-dot" id="wd4">4</div><div class="ws-lbl">EXPORT</div></div>
+    </div>
+  </div>
+  <div id="wiz-body">
+    <!-- STEP 1 -->
+    <div class="wiz-panel active" id="wp1">
+      <div class="wiz-label">FULL JOB DESCRIPTION</div>
+      <div id="wp1-note" style="display:none;font-size:10px;color:#2ea86a;margin-bottom:8px;background:#2ea86a0d;border:1px solid #2ea86a25;border-radius:3px;padding:6px 10px">✓ JD pre-loaded — review and edit if needed</div>
+      <textarea class="wiz-textarea" id="wp1-jd" rows="13" placeholder="Paste the full job description here. More detail = better gap analysis and cover letter.&#10;&#10;Tip: Copy everything — responsibilities, requirements, what they offer."></textarea>
+      <div style="margin-top:6px;font-size:10px;color:#AEAC9E">Characters: <span id="wp1-count">0</span> · Aim for 300+</div>
+    </div>
+    <!-- STEP 2 -->
+    <div class="wiz-panel" id="wp2">
+      <div id="wp2-loading" style="text-align:center;padding:40px 0;color:#AEAC9E;display:none">
+        <div class="spinner" style="font-size:26px;display:block;margin-bottom:12px;color:#C88010">◌</div>
+        <div style="font-size:11px;letter-spacing:1px">ANALYSING JD AGAINST YOUR RESUME…</div>
+      </div>
+      <div id="wp2-content" style="display:none">
+        <div class="wiz-label">SKILL MATCHES</div>
+        <div class="gap-section" style="border-color:#2ea86a30;background:#2ea86a08">
+          <div class="gap-section-title" style="color:#2ea86a">STRONG MATCHES</div>
+          <div id="wp2-matches"></div>
+        </div>
+        <div class="wiz-label">GAPS &amp; SUGGESTIONS</div>
+        <div class="gap-section" style="border-color:#C8801030;background:#C8801008">
+          <div class="gap-section-title" style="color:#A06010">GAPS</div>
+          <div id="wp2-gaps"></div>
+        </div>
+        <div class="wiz-label">KEYWORDS TO ADD</div>
+        <div class="gap-section" style="border-color:#5B9CF630;background:#5B9CF608">
+          <div class="gap-section-title" style="color:#2a5a9a">MISSING FROM YOUR RESUME</div>
+          <div id="wp2-kw"></div>
+        </div>
+        <div class="wiz-label">SUGGESTED TWEAKS <span style="font-weight:300;color:#B0AE9E;letter-spacing:0">(edit below)</span></div>
+        <div id="wp2-tweaks"></div>
+      </div>
+    </div>
+    <!-- STEP 3 -->
+    <div class="wiz-panel" id="wp3">
+      <div id="wp3-loading" style="text-align:center;padding:40px 0;color:#AEAC9E;display:none">
+        <div class="spinner" style="font-size:26px;display:block;margin-bottom:12px;color:#C88010">◌</div>
+        <div style="font-size:11px;letter-spacing:1px">GENERATING COVER LETTER…</div>
+      </div>
+      <div id="wp3-content" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div class="wiz-label" style="margin:0">COVER LETTER</div>
+          <button class="btn-ghost btn-sm" onclick="regenLetter()">↺ REGEN</button>
+        </div>
+        <textarea class="wiz-textarea" id="wp3-letter" rows="17"></textarea>
+        <div style="margin-top:6px;font-size:10px;color:#AEAC9E">Words: <span id="wp3-wc">0</span> · Target 250–300</div>
+      </div>
+    </div>
+    <!-- STEP 4 -->
+    <div class="wiz-panel" id="wp4">
+      <div class="wiz-label">EXPORT</div>
+      <button class="export-btn" onclick="exportTxt()">
+        <div class="export-btn-icon">📄</div>
+        <div><div class="export-btn-title">DOWNLOAD .TXT</div><div class="export-btn-sub">Paste into Word, Google Docs, or email</div></div>
+      </button>
+      <button class="export-btn" onclick="openGmail()">
+        <div class="export-btn-icon">✉️</div>
+        <div><div class="export-btn-title">OPEN IN GMAIL</div><div class="export-btn-sub">Pre-fills subject + letter body in Gmail compose</div></div>
+      </button>
+      <div class="wiz-label" style="margin-top:16px">LOG APPLICATION</div>
+      <div id="wp4-log" style="display:none" class="log-row">✓ Application logged — status updated to APPLIED</div>
+      <button class="btn-primary" id="wp4-btn" style="width:100%;padding:11px;font-size:11px" onclick="markApplied()">✓ MARK AS APPLIED &amp; LOG</button>
+      <div style="font-size:10px;color:#AEAC9E;margin-top:6px;text-align:center">Logs to Google Sheets if URL is configured</div>
+    </div>
+  </div>
+  <div id="wiz-nav">
+    <button class="btn-ghost" id="wiz-back" onclick="wizBack()" style="display:none">← BACK</button>
+    <div style="flex:1;font-size:10px;color:#AEAC9E" id="wiz-hint"></div>
+    <button class="btn-ghost" onclick="wizClose()">CLOSE</button>
+    <button class="btn-primary" id="wiz-next" onclick="wizNext()">NEXT →</button>
+  </div>
+</div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   CONSTANTS
+══════════════════════════════════════════════════════════ */
+const RESUME_SHORT=`SAP MM Consultant | Berlin | 5+ yrs
+Skills: SAP MM, EWM, S/4HANA, Fiori, RICEFW, IDOCs, P2P,
+Material Master, Vendor Master, Inventory Mgmt, JIRA, Agile
+Capgemini 2021-2025: MM implementations Boston Scientific & UNFI
+Certs: SAP S/4HANA Sourcing & Procurement (x2) + EWM 2020
+English C1 · German A2`;
+
+const FULL_RESUME=`Manasi Chaudhari | SAP MM Functional Consultant | Berlin, Germany
+Languages: English C1 (Fluent), German A2 (Beginner)
+Skills: SAP MM, EWM, S/4HANA, Fiori Launchpad, RICEFW, IDOCs, Procure-to-Pay, Material Master, Vendor Master, Release Procedures, Automatic Account Determination, Inventory Management, Special Procurement, JIRA, Agile/Scrum
+
+Capgemini Technology Services India Ltd | SAP Consultant | May 2021–Sept 2025
+Clients: Boston Scientific, United Natural Foods Incorporated (UNFI)
+- Led SAP S/4HANA MM module implementations for global enterprise clients
+- Gathered business requirements and prepared functional specification documents
+- Executed Functional Unit Testing (FUT); supported UAT with end-user training
+- Delivered multiple RICEFW objects with full documentation
+- Worked across release procedures, automatic account determination, inventory management, material master, vendor master, P2P cycle, and special procurement processes
+- Developed third-party integrations via IDOCs
+- Configured material master, vendor master, procurement processes, org structure
+- Extensive SAP Fiori app testing experience
+- Agile/Scrum delivery environment
+
+Bosch Chassis Systems India Pvt. Ltd | Graduate Apprentice | Oct 2019–Dec 2020
+- SAP MM end user — material master records, POs, requisitions, goods receipts
+
+Certs: SAP Certified S/4HANA Sourcing & Procurement | S/4HANA Sourcing & Procurement Upskilling | EWM with S/4HANA 2020
+Education: B.E. Mechanical Engineering, University of Pune 2015–2019
+Awards: Certificate of Achievement Oct 2023 · Star Award Q2 2022 · Rising Star Q1 2022`;
+
+const SAP_SKILLS=['sap mm','s/4hana','s4hana','fiori','ricefw','idoc','procure-to-pay','p2p',
+  'material master','vendor master','inventory','purchase order','goods receipt',
+  'account determination','release procedure','special procurement','ewm',
+  'warehouse management','ariba','successfactors','abap','bapi','bapi','agile','scrum'];
+
+// Hardcoded company lists
+const GREENHOUSE_COMPANIES=[
+  {name:'Accenture',token:'accenture'},
+  {name:'IBM',token:'ibm'},
+  {name:'Deloitte',token:'deloitte'},
+  {name:'PwC',token:'pwc'},
+  {name:'Capgemini',token:'capgemini'},
+  {name:'DXC Technology',token:'dxctechnology'},
+  {name:'Kyndryl',token:'kyndryl'},
+  {name:'Thoughtworks',token:'thoughtworks'},
+  {name:'BearingPoint',token:'bearingpoint'},
+];
+
+const LEVER_COMPANIES=[
+  {name:'LeverX',token:'leverx'},
+  {name:'Natuvion',token:'natuvion'},
+  {name:'Westernacher',token:'westernacher'},
+];
+
+const LS_STATES='sap_states_v3';
+const LS_CFG='sap_cfg_v1';
+const LS_COMPANIES='sap_companies_v1';
+
+/* ══════════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════════ */
+let allJobs=[],curFilter='all',jobStates={};
+const sk=j=>`${(j.company||'').trim()}||${(j.title||'').trim()}`;
+const loadSt=()=>{try{return JSON.parse(localStorage.getItem(LS_STATES)||'{}')}catch(e){return{}}};
+const saveSt=()=>localStorage.setItem(LS_STATES,JSON.stringify(jobStates));
+
+function loadCfg(){
+  try{
+    const c=JSON.parse(localStorage.getItem(LS_CFG)||'{}');
+    if(c.apikey)document.getElementById('apikey-input').value=c.apikey;
+    if(c.githubUrl)document.getElementById('github-url').value=c.githubUrl;
+    if(c.sheetsUrl)document.getElementById('sheets-url').value=c.sheetsUrl;
+  }catch(e){}
+}
+function saveCfg(){
+  localStorage.setItem(LS_CFG,JSON.stringify({
+    apikey:document.getElementById('apikey-input').value.trim(),
+    githubUrl:document.getElementById('github-url').value.trim(),
+    sheetsUrl:document.getElementById('sheets-url').value.trim(),
+  }));
+}
+
+function loadCustomCompanies(){
+  try{return JSON.parse(localStorage.getItem(LS_COMPANIES)||'[]')}catch(e){return[];}
+}
+
+/* ══════════════════════════════════════════════════════════
+   5-DIMENSION PRIORITY SCORE
+══════════════════════════════════════════════════════════ */
+function scoreJob(j){
+  const jd=(j.fullJD||j.description||'').toLowerCase();
+  const title=(j.title||'').toLowerCase();
+  const combined=jd+' '+title;
+
+  // D1 — Skill Match (30pts)
+  let d1=0;
+  SAP_SKILLS.forEach(skill=>{
+    if(combined.includes(skill)) d1=Math.min(30,d1+3);
+  });
+
+  // D2 — Freshness (25pts)
+  let d2=3;
+  const fr=parseFresh(j.rawDate);
+  if(fr.ord===0)       d2=25;  // today
+  else if(fr.ord<=1)   d2=22;  // yesterday
+  else if(fr.ord<=2)   d2=17;  // 2 days
+  else if(fr.ord<=3)   d2=11;  // 3 days
+  else if(fr.ord<=6)   d2=5;   // this week
+  else if(fr.ord>=99)  d2=3;   // unknown
+
+  // D3 — Likelihood (20pts)
+  let d3=0;
+  const lang=j.langStatus||'unverified';
+  if(lang==='english')           d3+=8;
+  else if(!j.germanRequired)     d3+=5;
+  if(j.germanRequired)           d3=Math.max(0,d3-15);
+  const lo=(j.location||'').toLowerCase();
+  if(lo.includes('berlin'))      d3+=3;
+  const src=(j.source||'').toLowerCase();
+  if(['greenhouse','lever','workday','successfactors','personio']
+     .some(s=>src.includes(s))) d3+=4;   // direct company post
+  else if(src.includes('stepstone')||src.includes('bundesagentur')) d3+=2;
+  d3=Math.max(0,Math.min(20,d3));
+
+  // D4 — Source Quality (15pts)
+  const srcQ={
+    'bundesagentur':15,'company site':14,'greenhouse':13,'lever':13,
+    'workday':12,'successfactors':12,'personio':11,'softgarden':11,
+    'stepstone':10,'linkedin':8,'indeed':8,'google':7,'xing':7,
+    'glassdoor':6,'gemini':3,'other':4
+  };
+  let d4=4;
+  for(const[k,v]of Object.entries(srcQ)){
+    if(src.includes(k)){d4=v;break;}
+  }
+
+  // D5 — Role Quality (10pts)
+  let d5=0;
+  if(j.salary&&j.salary!=='null'){
+    const nums=(j.salary.match(/\d+/g)||[]).map(Number);
+    if(nums.some(n=>n>65000)) d5+=5;
+    else d5+=2;
+  }
+  const rt=(j.remoteType||'').toLowerCase();
+  if(rt==='remote'||rt==='hybrid') d5+=3;
+  if(jd.length>300) d5+=2;
+  else if(jd.length<100&&jd.length>0) d5-=2;
+  d5=Math.max(0,Math.min(10,d5));
+
+  const total=Math.min(100,d1+d2+d3+d4+d5);
+  return{total,d1,d2,d3,d4,d5};
+}
+
+/* ══════════════════════════════════════════════════════════
+   FRESHNESS PARSER
+══════════════════════════════════════════════════════════ */
+function parseFresh(r){
+  if(!r||r==='null'||r==='None')return{days:null,label:'DATE UNKNOWN',cls:'b-unknown',ord:99};
+  const s=String(r).toLowerCase().trim();
+  if(/today|just now|hours? ago|\d+ hour|less than.{0,5}day|this morning/.test(s))
+    return{days:0,label:'TODAY',cls:'b-today',ord:0};
+  if(/yesterday/.test(s))return{days:1,label:'YESTERDAY',cls:'b-2d',ord:1};
+  const dm=s.match(/(\d+)\s*day/);
+  if(dm){const d=+dm[1];
+    if(d<=1)return{days:d,label:'TODAY',cls:'b-today',ord:0};
+    if(d<=2)return{days:d,label:'2 DAYS AGO',cls:'b-2d',ord:2};
+    if(d<=3)return{days:d,label:'3 DAYS AGO',cls:'b-3d',ord:3};
+    if(d<=7)return{days:d,label:'THIS WEEK',cls:'b-week',ord:6};
+    return{days:d,label:d+'D AGO',cls:'b-old',ord:d};
+  }
+  const wm=s.match(/(\d+)\s*week/);
+  if(wm){const w=+wm[1];return{days:w*7,label:w+'W AGO',cls:'b-old',ord:w*7};}
+  // ISO / named date
+  const dateStr=s.match(/(\d{4}[-/]\d{2}[-/]\d{2})/)?.[1]||
+    s.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+\d{1,2},?\s*\d{4}/i)?.[0];
+  if(dateStr){
+    const dt=new Date(dateStr);
+    if(!isNaN(dt)){
+      const diff=Math.floor((Date.now()-dt)/86400000);
+      if(diff<=0)return{days:0,label:'TODAY',cls:'b-today',ord:0};
+      if(diff<=1)return{days:1,label:'YESTERDAY',cls:'b-2d',ord:1};
+      if(diff<=2)return{days:diff,label:'2 DAYS AGO',cls:'b-2d',ord:2};
+      if(diff<=3)return{days:diff,label:'3 DAYS AGO',cls:'b-3d',ord:3};
+      if(diff<=7)return{days:diff,label:'THIS WEEK',cls:'b-week',ord:6};
+      return{days:diff,label:diff+'D AGO',cls:'b-old',ord:diff};
+    }
+  }
+  return{days:null,label:'DATE UNKNOWN',cls:'b-unknown',ord:99};
+}
+
+/* ══════════════════════════════════════════════════════════
+   GERMAN LANGUAGE DETECTION (regex on full text)
+══════════════════════════════════════════════════════════ */
+const DE_RE=new RegExp(
+  'deutsch(kenntnisse|e?s?|sprachig)?[\\s\\w]{0,20}(erforderlich|vorausgesetzt|zwingend|fließend|b2|c1|niveau)'+
+  '|fließend[e\\s]+deutsch'+
+  '|sprachkenntnisse[\\s\\w]{0,10}deutsch'+
+  '|german[\\s\\w]{0,10}(b2|c1|mandatory|required|fluent)','i');
+const detectDE=t=>DE_RE.test(t||'');
+
+/* ══════════════════════════════════════════════════════════
+   DEDUPLICATION
+══════════════════════════════════════════════════════════ */
+function norm(s){return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim();}
+function fuzzy(a,b){
+  const wa=new Set(norm(a).split(' ').filter(w=>w.length>3));
+  const wb=new Set(norm(b).split(' ').filter(w=>w.length>3));
+  if(!wa.size||!wb.size)return false;
+  let ov=0;for(const w of wa)if(wb.has(w))ov++;
+  return ov/Math.min(wa.size,wb.size)>=0.65;
+}
+function dedup(jobs){
+  const seen=[],urls=new Set();
+  for(const j of jobs){
+    const url=(j.jobUrl||'').trim().toLowerCase().replace(/\/$/,'');
+    if(url&&urls.has(url))continue;
+    if(seen.some(s=>fuzzy(s.company,j.company)&&fuzzy(s.title,j.title)))continue;
+    if(url)urls.add(url);
+    seen.push(j);
+  }
+  return seen;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SOURCE CHIP HELPERS
+══════════════════════════════════════════════════════════ */
+function srcChip(id,state,txt){
+  const el=document.getElementById('src-'+id);
+  if(!el)return;
+  el.className='src-chip '+state;
+  if(txt)el.textContent=txt;
+}
+
+/* ══════════════════════════════════════════════════════════
+   STEPS (progress panel)
+══════════════════════════════════════════════════════════ */
+let stepEls={};
+function initSteps(names){
+  const row=document.getElementById('step-row');
+  row.innerHTML='';
+  stepEls={};
+  names.forEach((n,i)=>{
+    const id='step-'+i;
+    row.innerHTML+=`<div class="step" id="${id}">
+      <div class="step-label">${n}</div>
+      <div class="step-detail" id="${id}-d">waiting…</div>
+      <div class="step-bar"><div class="step-bar-fill" id="${id}-b"></div></div>
+    </div>`;
+  });
+  names.forEach((_,i)=>stepEls[i]=i);
+}
+function setStep(i,state,detail){
+  const el=document.getElementById('step-'+i);
+  if(!el)return;
+  el.className='step'+(state?' '+state:'');
+  if(detail)document.getElementById('step-'+i+'-d').textContent=detail;
+}
+
+/* ══════════════════════════════════════════════════════════
+   STATUS
+══════════════════════════════════════════════════════════ */
+function showStatus(msg,type){
+  document.getElementById('status-row').style.display='flex';
+  document.getElementById('status-dot').className='dot dot-'+type;
+  const t=document.getElementById('status-text');
+  t.style.color=type==='red'?'#B02020':type==='green'?'#1a7a48':'#C88010';
+  t.textContent=msg.toUpperCase();
+}
+
+/* ══════════════════════════════════════════════════════════
+   GEMINI API
+══════════════════════════════════════════════════════════ */
+function apiKey(){return document.getElementById('apikey-input').value.trim();}
+
+async function gemini(prompt,useSearch=false){
+  const key=apiKey();
+  if(!key)throw new Error('No Gemini API key configured');
+  const model=document.getElementById('model-select').value;
+  const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+  const body={
+    contents:[{role:'user',parts:[{text:prompt}]}],
+    generationConfig:{temperature:0.2,maxOutputTokens:8192},
+  };
+  if(useSearch)body.tools=[{google_search:{}}];
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e?.error?.message||'HTTP '+r.status);}
+  const d=await r.json();
+  return(d?.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('');
+}
+
+function extractJSON(txt,arrOrObj='arr'){
+  const fence=txt.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const src=fence?fence[1]:txt;
+  const ch=arrOrObj==='arr'?['[',']']:['{','}'];
+  const s=src.indexOf(ch[0]),e=src.lastIndexOf(ch[1])+1;
+  if(s<0)return arrOrObj==='arr'?[]:{};
+  try{return JSON.parse(src.slice(s,e));}catch(err){return arrOrObj==='arr'?[]:{}}
+}
+
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ══════════════════════════════════════════════════════════
+   SOURCE FETCHERS
+══════════════════════════════════════════════════════════ */
+
+// 1. GitHub JSON
+async function fetchGitHub(){
+  const url=document.getElementById('github-url').value.trim();
+  if(!url){srcChip('github','off','GITHUB JSON');return[];}
+  srcChip('github','loading','GITHUB…');
+  try{
+    const r=await fetch(url+'?t='+Date.now());
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    const jobs=(d.jobs||d||[]).map(j=>({...j,_src:'GitHub JSON'}));
+    srcChip('github','ok',`GITHUB (${jobs.length})`);
+    return jobs;
+  }catch(e){
+    srcChip('github','err','GITHUB ERR');
+    console.warn('GitHub fetch:',e.message);
+    return[];
+  }
+}
+
+// 2. StepStone RSS
+async function fetchStepStone(){
+  srcChip('stepstone','loading','STEPSTONE…');
+  try{
+    const proxy='https://api.allorigins.win/get?url=';
+    const rssUrl=encodeURIComponent(
+      'https://www.stepstone.de/rss/stellenangebote.html?keywords=SAP+MM+Consultant&location=Deutschland&radius=30'
+    );
+    const r=await fetch(proxy+rssUrl,{signal:AbortSignal.timeout(12000)});
+    const d=await r.json();
+    const parser=new DOMParser();
+    const xml=parser.parseFromString(d.contents,'text/xml');
+    const items=[...xml.querySelectorAll('item')];
+    const jobs=items.slice(0,30).map(item=>({
+      title:item.querySelector('title')?.textContent||'',
+      company:item.querySelector('author,dc\\:creator')?.textContent||
+               (item.querySelector('description')?.textContent||'').match(/([A-Z][a-zA-Z\s]+(?:GmbH|AG|SE|Ltd|Group|Solutions|Services|Consulting))/)?.[1]||'',
+      location:item.querySelector('location')?.textContent||'Germany',
+      jobUrl:item.querySelector('link')?.textContent||'',
+      source:'StepStone',
+      rawDate:item.querySelector('pubDate')?.textContent||null,
+      fullJD:item.querySelector('description')?.textContent?.replace(/<[^>]+>/g,'')||'',
+      remoteType:'Onsite',
+      salary:null,
+      langStatus:'unverified',
+    }));
+    srcChip('stepstone','ok',`STEPSTONE (${jobs.length})`);
+    return jobs;
+  }catch(e){
+    srcChip('stepstone','err','STEPSTONE ERR');
+    console.warn('StepStone RSS:',e.message);
+    return[];
+  }
+}
+
+// 3. Bundesagentur für Arbeit
+async function fetchBundesagentur(){
+  srcChip('arbeitsagentur','loading','BUNDESAGENTUR…');
+  try{
+    const url='https://rest.arbeitsagentur.de/jobboerse/jobsuche-service/pc/v4/jobs'+
+      '?was=SAP+MM+Consultant&wo=Deutschland&angebotsart=1&page=0&size=25&zeitraum=7';
+    const r=await fetch(url,{
+      headers:{'X-API-Key':'jobboerse-jobsuche'},
+      signal:AbortSignal.timeout(12000)
+    });
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    const items=d.stellenangebote||[];
+    const jobs=items.map(s=>({
+      title:s.beruf||s.stellenbezeichnung||'',
+      company:s.arbeitgeber||'',
+      location:s.arbeitsort?.ort||s.arbeitsort?.region||'Germany',
+      jobUrl:s.refnr?`https://www.arbeitsagentur.de/jobsuche/jobdetail/${s.refnr}`:'',
+      source:'Bundesagentur',
+      rawDate:s.eintrittsdatum||s.aktuelleVeroeffentlichungsdatum||null,
+      fullJD:s.stellenbeschreibung||'',
+      remoteType:(s.arbeitszeitmodelle||[]).some(m=>m.toLowerCase().includes('home'))?'Remote':'Onsite',
+      salary:null,
+      langStatus:'unverified',
+    }));
+    srcChip('arbeitsagentur','ok',`BUNDESAGENTUR (${jobs.length})`);
+    return jobs;
+  }catch(e){
+    srcChip('arbeitsagentur','err','BUNDESAGENTUR ERR');
+    console.warn('Bundesagentur:',e.message);
+    return[];
+  }
+}
+
+// 4. Greenhouse
+async function fetchGreenhouse(){
+  srcChip('greenhouse','loading','GREENHOUSE…');
+  const customCompanies=loadCustomCompanies().filter(c=>c.ats==='greenhouse');
+  const all=[...GREENHOUSE_COMPANIES,...customCompanies];
+  let total=0;const jobs=[];
+  for(const co of all){
+    try{
+      const r=await fetch(
+        `https://boards-api.greenhouse.io/v1/boards/${co.token}/jobs?content=true`,
+        {signal:AbortSignal.timeout(8000)}
+      );
+      if(!r.ok)continue;
+      const d=await r.json();
+      const sap=(d.jobs||[]).filter(j=>{
+        const t=(j.title||'').toLowerCase();
+        return t.includes('sap')&&(t.includes('mm')||t.includes('material')||t.includes('procurement'));
+      });
+      sap.forEach(j=>{
+        jobs.push({
+          title:j.title||'',
+          company:co.name,
+          location:(j.location||{}).name||'Germany',
+          jobUrl:j.absolute_url||'',
+          source:'Greenhouse',
+          rawDate:j.updated_at||null,
+          fullJD:j.content?.replace(/<[^>]+>/g,'')||'',
+          remoteType:j.metadata?.some(m=>m.value==='Remote')?'Remote':'Onsite',
+          salary:null,
+          langStatus:'unverified',
+        });
+        total++;
+      });
+    }catch(e){continue;}
+    await sleep(200);
+  }
+  srcChip('greenhouse','ok',`GREENHOUSE (${total})`);
+  return jobs;
+}
+
+// 5. Lever
+async function fetchLever(){
+  srcChip('lever','loading','LEVER…');
+  const customCompanies=loadCustomCompanies().filter(c=>c.ats==='lever');
+  const all=[...LEVER_COMPANIES,...customCompanies];
+  let total=0;const jobs=[];
+  for(const co of all){
+    try{
+      const r=await fetch(
+        `https://api.lever.co/v0/postings/${co.token}?mode=json`,
+        {signal:AbortSignal.timeout(8000)}
+      );
+      if(!r.ok)continue;
+      const d=await r.json();
+      const sap=d.filter(j=>{
+        const t=(j.text||'').toLowerCase();
+        return t.includes('sap')&&(t.includes('mm')||t.includes('material')||t.includes('procurement'));
+      });
+      sap.forEach(j=>{
+        jobs.push({
+          title:j.text||'',
+          company:co.name,
+          location:(j.categories||{}).location||'Germany',
+          jobUrl:j.hostedUrl||'',
+          source:'Lever',
+          rawDate:j.createdAt?new Date(j.createdAt).toISOString().slice(0,10):null,
+          fullJD:(j.description||'').replace(/<[^>]+>/g,'')||'',
+          remoteType:(j.workplaceType||'').toLowerCase()==='remote'?'Remote':'Onsite',
+          salary:null,
+          langStatus:'unverified',
+        });
+        total++;
+      });
+    }catch(e){continue;}
+    await sleep(200);
+  }
+  srcChip('lever','ok',`LEVER (${total})`);
+  return jobs;
+}
+
+// 6. Gemini fallback
+async function fetchGeminiFallback(){
+  if(!apiKey()){srcChip('gemini','off','GEMINI');return[];}
+  srcChip('gemini','loading','GEMINI…');
+  const prompt=`Search for SAP MM Consultant jobs in Germany posted in the last 3 days.
+Focus on English-friendly roles. Return ONLY a raw JSON array.
+Schema per item: {"title":"","company":"","location":"City, Germany","remoteType":"Remote|Hybrid|Onsite","salary":"or null","germanRequired":false,"jobUrl":"url","source":"source","rawDate":"date or null","fullJD":"2–3 sentence description","keySkills":["SAP MM"]}
+Return 8–12 jobs. Nothing else.`;
+  try{
+    const txt=await gemini(prompt,true);
+    const jobs=extractJSON(txt,'arr');
+    srcChip('gemini','ok',`GEMINI (${jobs.length})`);
+    return jobs.map(j=>({...j,langStatus:'unverified',source:j.source||'Gemini'}));
+  }catch(e){
+    srcChip('gemini','err','GEMINI ERR');
+    return[];
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   MAIN SEARCH ORCHESTRATOR
+══════════════════════════════════════════════════════════ */
+async function startSearch(){
+  saveCfg();
+  const btn=document.getElementById('search-btn');
+  btn.disabled=true;btn.innerHTML='<span class="spinner">◌</span> FETCHING…';
+  document.getElementById('progress-panel').style.display='block';
+  document.getElementById('filter-bar').style.display='none';
+  document.getElementById('dedup-info').style.display='none';
+  showStatus('Fetching from all sources…','amber');
+  allJobs=[];renderGrid();
+
+  const STEP_NAMES=['GITHUB JSON','STEPSTONE RSS','BUNDESAGENTUR','GREENHOUSE','LEVER','GEMINI FALLBACK'];
+  initSteps(STEP_NAMES);
+
+  const results=[];
+
+  // Run all sources, show individual step progress
+  const run=async(idx,fn,srcId)=>{
+    setStep(idx,'running');
+    try{
+      const jobs=await fn();
+      setStep(idx,'done',`${jobs.length} found`);
+      results.push(...jobs);
+    }catch(e){
+      setStep(idx,'err',e.message.slice(0,40));
+    }
+  };
+
+  // Sources run in parallel pairs to keep it fast
+  await Promise.all([
+    run(0,fetchGitHub,'github'),
+    run(1,fetchStepStone,'stepstone'),
+  ]);
+  await Promise.all([
+    run(2,fetchBundesagentur,'arbeitsagentur'),
+    run(3,fetchGreenhouse,'greenhouse'),
+  ]);
+  await Promise.all([
+    run(4,fetchLever,'lever'),
+  ]);
+  // Gemini only if other sources are thin
+  if(results.length<8){
+    showStatus('Sources thin — running Gemini fallback…','amber');
+    await run(5,fetchGeminiFallback,'gemini');
+  }else{
+    setStep(5,'off','skipped (enough results)');
+    srcChip('gemini','off','GEMINI (skipped)');
+  }
+
+  showStatus('Processing results…','amber');
+
+  // Enrich all jobs
+  const enriched=results.map(j=>{
+    j.germanRequired=detectDE(j.fullJD||j.description||'');
+    j.langStatus=j.langStatus||'unverified';
+    j.fresh=parseFresh(j.rawDate);
+    const sc=scoreJob(j);
+    j.priorityScore=sc.total;
+    j.scoreBreakdown=sc;
+    return j;
+  });
+
+  // Deduplicate
+  const before=enriched.length;
+  allJobs=dedup(enriched);
+
+  // Sort freshness-first, then priority score
+  allJobs.sort((a,b)=>{
+    const fo=(a.fresh?.ord??99)-(b.fresh?.ord??99);
+    return fo!==0?fo:b.priorityScore-a.priorityScore;
+  });
+
+  jobStates=loadSt();
+  const removed=before-allJobs.length;
+  const di=document.getElementById('dedup-info');
+  di.style.display='block';
+  di.textContent=`Raw: ${before} · Dupes removed: ${removed} · Unique: ${allJobs.length}`;
+  document.getElementById('filter-bar').style.display='flex';
+  renderGrid();
+  showStatus(`${allJobs.length} unique positions — sorted by freshness + priority`,'green');
+  btn.disabled=false;btn.textContent='↺ REFRESH';
+}
+
+/* ══════════════════════════════════════════════════════════
+   JSON IMPORT (from Python script)
+══════════════════════════════════════════════════════════ */
+function importJSON(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const d=JSON.parse(e.target.result);
+      const jobs=(d.jobs||d||[]);
+      if(!Array.isArray(jobs))throw new Error('Expected array');
+      const enriched=jobs.map(j=>{
+        j.germanRequired=j.germanRequired||detectDE(j.fullJD||'');
+        j.langStatus=j.langStatus||'unverified';
+        j.fresh=parseFresh(j.rawDate);
+        const sc=scoreJob(j);
+        j.priorityScore=sc.total;
+        j.scoreBreakdown=sc;
+        return j;
+      });
+      const before=enriched.length;
+      // Merge with existing allJobs — dedup across both
+      const merged=dedup([...enriched,...allJobs]);
+      merged.sort((a,b)=>{
+        const fo=(a.fresh?.ord??99)-(b.fresh?.ord??99);
+        return fo!==0?fo:b.priorityScore-a.priorityScore;
+      });
+      allJobs=merged;
+      jobStates=loadSt();
+      document.getElementById('filter-bar').style.display='flex';
+      renderGrid();
+      showStatus(`Imported ${before} jobs — ${allJobs.length} total after dedup`,'green');
+      document.getElementById('dedup-info').style.display='block';
+      document.getElementById('dedup-info').textContent=
+        `Imported: ${before} · Total unique: ${allJobs.length}`;
+    }catch(err){
+      showStatus('Import error: '+err.message,'red');
+    }
+  };
+  reader.readAsText(file);
+  input.value=''; // reset so same file can be re-imported
+}
+
+/* ══════════════════════════════════════════════════════════
+   FILTER + RENDER
+══════════════════════════════════════════════════════════ */
+function setFilter(f,el){
+  curFilter=f;
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  renderGrid();
+}
+
+function getFiltered(){
+  return allJobs.filter(j=>{
+    const st=jobStates[sk(j)]||'new';
+    if(curFilter==='fresh')return j.fresh&&j.fresh.ord<=1;
+    if(curFilter==='high')return j.priorityScore>=70;
+    if(curFilter==='english')return j.langStatus==='english'||(j.langStatus==='unverified'&&!j.germanRequired);
+    if(curFilter==='remote')return j.remoteType==='Remote'||j.remoteType==='Hybrid';
+    if(curFilter==='saved')return st==='saved';
+    if(curFilter==='applied')return st==='applied';
+    return true;
+  });
+}
+
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function toggleBreakdown(idx){
+  const el=document.getElementById('bd-'+idx);
+  if(el)el.classList.toggle('open');
+}
+
+function langBadgeHtml(j,idx){
+  const s=j.langStatus||'unverified';
+  if(s==='checking')return`<span class="badge b-unverified" id="lb-${idx}"><span class="spinner">◌</span> CHECKING</span>`;
+  if(s==='english')return`<span class="badge b-verified-ok" id="lb-${idx}">✓ ENGLISH VERIFIED</span>`;
+  if(s==='german')return`<span class="badge b-verified-de" id="lb-${idx}">⚠ GERMAN B2/C1</span>`;
+  if(s==='unclear')return`<span class="badge b-unclear" id="lb-${idx}">~ LANG UNCLEAR</span>`;
+  const warn=j.germanRequired?'<span class="badge b-verified-de">⚠ GERMAN DETECTED</span>':'';
+  const checkBtn=j.jobUrl?`<button class="sb" style="color:#C88010;border-color:#C8801040;font-size:8px;padding:2px 7px" onclick="checkJob(${idx})">CHECK ↗</button>`:'';
+  return warn||(
+    `<span class="badge b-unverified" id="lb-${idx}">? UNVERIFIED</span>${checkBtn}`
+  );
+}
+
+function renderGrid(){
+  const grid=document.getElementById('job-grid');
+  const jobs=getFiltered();
+  document.getElementById('clabel').textContent=jobs.length+' / '+allJobs.length+' ROLES';
+  if(!jobs.length){
+    grid.innerHTML=allJobs.length
+      ?'<div style="text-align:center;padding:60px;color:#B0AE9E;grid-column:1/-1;font-size:11px;letter-spacing:2px">NO ROLES MATCH THIS FILTER</div>'
+      :'<div style="text-align:center;padding:80px 20px;color:#CCCAB8;grid-column:1/-1"><div style="font-size:40px;margin-bottom:12px;opacity:.4">◈</div><div style="font-size:11px;letter-spacing:3px;margin-bottom:6px;color:#AEAC9E">READY TO FETCH</div><div style="font-size:9px;color:#C8C6B8;letter-spacing:1px">GITHUB · STEPSTONE · BUNDESAGENTUR · GREENHOUSE · LEVER · GEMINI</div></div>';
+    return;
+  }
+  grid.innerHTML=jobs.map((j,i)=>{
+    const idx=allJobs.indexOf(j);
+    const sc=j.priorityScore||0;
+    const scCls=sc>=70?'score-high':sc>=50?'score-mid':'score-low';
+    const rc=j.remoteType==='Remote'?'#1a7a48':j.remoteType==='Hybrid'?'#2563EB':'#999';
+    const skills=(j.keySkills||[]).slice(0,5).map(s=>'<span class="skill-tag">'+esc(s)+'</span>').join('');
+    const fr=j.fresh||{label:'DATE UNKNOWN',cls:'b-unknown'};
+    const st=jobStates[sk(j)]||'new';
+    const bd=j.scoreBreakdown||{d1:0,d2:0,d3:0,d4:0,d5:0};
+    const isOld=fr.days!==null&&fr.days>7;
+    if(isOld&&st!=='applied')return'';
+
+    return`<div class="card state-${st}" id="card-${idx}" style="animation-delay:${i*25}ms">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:10px">
+  <div style="flex:1">
+    <div style="font-size:13px;font-family:'IBM Plex Sans',sans-serif;font-weight:600;line-height:1.3;margin-bottom:3px">${esc(j.title)}</div>
+    <div style="font-size:11px;color:#C88010">${esc(j.company)}</div>
+  </div>
+  <div class="score-wrap" onclick="toggleBreakdown(${idx})">
+    <div class="score-num ${scCls}" id="sc-${idx}">${sc}</div>
+    <div class="score-label">PRIORITY ▾</div>
+  </div>
+</div>
+
+<!-- Score breakdown (toggle) -->
+<div class="score-breakdown" id="bd-${idx}">
+  ${[['Skills',bd.d1,30,'#2ea86a'],['Freshness',bd.d2,25,'#C88010'],
+     ['Likelihood',bd.d3,20,'#5B9CF6'],['Source',bd.d4,15,'#888'],
+     ['Quality',bd.d5,10,'#B0AE9E']].map(([lbl,pts,max,col])=>`
+  <div class="sbd-row">
+    <div class="sbd-label">${lbl}</div>
+    <div class="sbd-bar-wrap"><div class="sbd-bar" style="width:${Math.round(pts/max*100)}%;background:${col}"></div></div>
+    <div class="sbd-pts">${pts}/${max}</div>
+  </div>`).join('')}
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;align-items:center">
+  <span class="badge ${fr.cls}">${fr.label}</span>
+  ${langBadgeHtml(j,idx)}
+  <span class="badge" style="color:${rc};background:${rc}18;border:1px solid ${rc}35">${esc(j.remoteType||'ONSITE')}</span>
+  ${j.salary&&j.salary!=='null'?`<span class="badge" style="color:#666;background:#66666810;border:1px solid #66666820">${esc(j.salary)}</span>`:''}
+  ${j.fullJD?`<span class="badge" style="color:#2ea86a;background:#2ea86a12;border:1px solid #2ea86a30">JD READY</span>`:''}
+</div>
+
+<div style="display:flex;justify-content:space-between;margin-bottom:8px">
+  <span style="font-size:10px;color:#888">📍 ${esc(j.location)}</span>
+  <span style="font-size:9px;color:#B0AE9E;letter-spacing:.8px">VIA ${esc((j.source||'').toUpperCase())}</span>
+</div>
+${skills?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px">${skills}</div>`:''}
+<div style="display:flex;gap:5px;margin-bottom:10px">
+  <button class="sb sb-save${st==='saved'?' on':''}" onclick="setState(${idx},'saved')">${st==='saved'?'★ SAVED':'☆ SAVE'}</button>
+  <button class="sb sb-apply${st==='applied'?' on':''}" onclick="setState(${idx},'applied')">${st==='applied'?'✓ APPLIED':'MARK APPLIED'}</button>
+  <button class="sb sb-skip${st==='skip'?' on':''}" onclick="setState(${idx},'skip')">SKIP</button>
+</div>
+<div style="display:flex;gap:8px">
+  <button class="btn-primary" style="flex:1;padding:7px;font-size:10px;letter-spacing:1px" onclick="wizard(${idx})">▶ APPLY WIZARD</button>
+  ${j.jobUrl?`<a href="${esc(j.jobUrl)}" target="_blank" rel="noopener"><button class="btn-ghost btn-sm">VIEW ↗</button></a>`:''}
+</div>
+</div>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════════════════
+   STATE + SHEETS
+══════════════════════════════════════════════════════════ */
+function setState(idx,ns){
+  const j=allJobs[idx];if(!j)return;
+  const k=sk(j);
+  jobStates[k]=(jobStates[k]===ns)?'new':ns;
+  saveSt();
+  sheetUpsert(j,jobStates[k]);
+  renderGrid();
+}
+
+function setSheetsStatus(msg,color){
+  const el=document.getElementById('sheets-status');
+  el.textContent=msg;el.style.color=color||'#B0AE9E';
+}
+
+async function sheetUpsert(job,status){
+  const url=document.getElementById('sheets-url').value.trim();
+  if(!url)return;
+  const payload={action:'upsert',job:{
+    company:job.company,title:job.title,location:job.location,
+    source:job.source,fitScore:job.priorityScore,remoteType:job.remoteType,
+    langStatus:job.langStatus||'unverified',status,jobUrl:job.jobUrl,
+    salary:job.salary||'',dateFound:new Date().toISOString().slice(0,10),
+    appliedDate:status==='applied'?new Date().toISOString().slice(0,10):'',
+  }};
+  try{
+    setSheetsStatus('↑ saving…','#C88010');
+    await fetch(url,{method:'POST',mode:'no-cors',body:JSON.stringify(payload)});
+    setSheetsStatus('✓ saved','#2ea86a');
+    setTimeout(()=>setSheetsStatus('',''),2000);
+  }catch(e){setSheetsStatus('⚠ save failed','#E05A5A');}
+}
+
+/* ══════════════════════════════════════════════════════════
+   CHECK JOB (language verification + full JD)
+══════════════════════════════════════════════════════════ */
+async function checkJob(idx){
+  const j=allJobs[idx];
+  if(!j||!j.jobUrl)return;
+  const lb=document.getElementById('lb-'+idx);
+  if(lb)lb.outerHTML=`<span class="badge b-unverified" id="lb-${idx}"><span class="spinner">◌</span> CHECKING</span>`;
+  const prompt=`Fetch this job URL and answer:
+1. Does it require German B2/C1 as mandatory? ("fließend Deutsch", "Deutschkenntnisse erforderlich" etc.)
+2. Extract the full job description text.
+URL: ${j.jobUrl}
+Reply ONLY as JSON: {"langStatus":"ENGLISH_OK"|"GERMAN_REQUIRED"|"UNCLEAR","fullJD":"complete text"}`;
+  try{
+    const txt=await gemini(prompt,true);
+    const parsed=extractJSON(txt,'obj');
+    const ls=parsed.langStatus||'UNCLEAR';
+    j.langStatus=ls==='ENGLISH_OK'?'english':ls==='GERMAN_REQUIRED'?'german':'unclear';
+    if(parsed.fullJD)j.fullJD=parsed.fullJD;
+    if(j.langStatus==='german')j.germanRequired=true;
+    // Recalculate score with new info
+    const sc=scoreJob(j);j.priorityScore=sc.total;j.scoreBreakdown=sc;
+  }catch(e){j.langStatus='unclear';}
+  const lb2=document.getElementById('lb-'+idx);
+  if(lb2){
+    const tmp=document.createElement('div');
+    tmp.innerHTML=langBadgeHtml(j,idx);
+    lb2.replaceWith(...tmp.childNodes);
+  }
+  const scEl=document.getElementById('sc-'+idx);
+  if(scEl){
+    const sc=j.priorityScore||0;
+    scEl.className='score-num '+(sc>=70?'score-high':sc>=50?'score-mid':'score-low');
+    scEl.textContent=sc;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   DISCOVER COMPANY ATS
+══════════════════════════════════════════════════════════ */
+function openDiscover(){document.getElementById('disc-overlay').classList.add('open');}
+function closeDiscover(){document.getElementById('disc-overlay').classList.remove('open');}
+function discBgClose(e){if(e.target===document.getElementById('disc-overlay'))closeDiscover();}
+
+async function runDiscover(){
+  const name=document.getElementById('disc-input').value.trim();
+  if(!name)return;
+  const btn=document.getElementById('disc-btn');
+  const result=document.getElementById('disc-result');
+  btn.disabled=true;btn.innerHTML='<span class="spinner">◌</span> SEARCHING…';
+  result.style.display='none';
+
+  const prompt=`Find the job board / ATS for the company "${name}".
+Check if they use: Greenhouse (boards.greenhouse.io), Lever (jobs.lever.co), Workday (myworkdayjobs.com), Personio (jobs.personio.de), Softgarden (.softgarden.de).
+Try to find the exact company token/slug used in their job board URL.
+Reply ONLY as JSON: {"found":true/false,"ats":"greenhouse"|"lever"|"workday"|"personio"|"softgarden"|"other","token":"slug","url":"full URL to their job board","evidence":"one sentence explaining how you found it"}`;
+
+  try{
+    const txt=await gemini(prompt,true);
+    const d=extractJSON(txt,'obj');
+    result.style.display='block';
+    if(d.found&&d.token&&(d.ats==='greenhouse'||d.ats==='lever')){
+      result.innerHTML=`<div style="color:#2ea86a;font-weight:600;margin-bottom:6px">✓ Found: ${esc(d.ats.toUpperCase())} — token: <code>${esc(d.token)}</code></div>
+<div style="color:#888;font-size:10px;margin-bottom:8px">${esc(d.evidence)}</div>
+<a href="${esc(d.url||'')}" target="_blank" style="color:#C88010;font-size:10px">${esc(d.url||'')}</a>
+<div style="margin-top:10px">
+  <button class="btn-primary btn-sm" onclick="saveDiscoveredCompany('${esc(name)}','${esc(d.ats)}','${esc(d.token)}')">ADD TO SOURCES</button>
+</div>`;
+    }else if(d.found){
+      result.innerHTML=`<div style="color:#A06010;margin-bottom:6px">⚠ Found but not directly supported: ${esc(d.ats)}</div>
+<div style="color:#888;font-size:10px">${esc(d.evidence)}</div>
+<div style="font-size:10px;color:#B0AE9E;margin-top:6px">URL: <a href="${esc(d.url||'')}" target="_blank" style="color:#C88010">${esc(d.url||'')}</a></div>
+<div style="font-size:10px;color:#B0AE9E;margin-top:4px">You can manually visit their careers page and bookmark it.</div>`;
+    }else{
+      result.innerHTML=`<div style="color:#B02020;margin-bottom:4px">✕ No supported ATS found for "${esc(name)}"</div>
+<div style="color:#888;font-size:10px">They may use a custom careers page. Try searching "${esc(name)} careers Germany" and check manually.</div>`;
+    }
+  }catch(e){
+    result.style.display='block';
+    result.innerHTML=`<div style="color:#B02020">Error: ${esc(e.message)}</div>`;
+  }
+  btn.disabled=false;btn.textContent='DISCOVER ↗';
+}
+
+function saveDiscoveredCompany(name,ats,token){
+  const companies=loadCustomCompanies();
+  if(!companies.some(c=>c.token===token&&c.ats===ats)){
+    companies.push({name,ats,token,addedAt:new Date().toISOString().slice(0,10)});
+    localStorage.setItem(LS_COMPANIES,JSON.stringify(companies));
+  }
+  closeDiscover();
+  showStatus(`${name} added to ${ats.toUpperCase()} sources — refresh to fetch their jobs`,'green');
+}
+
+function openManageCompanies(){
+  const companies=loadCustomCompanies();
+  if(!companies.length){alert('No custom companies added yet.\nUse the + DISCOVER COMPANY button to find and add companies.');return;}
+  const list=companies.map((c,i)=>`${i+1}. ${c.name} (${c.ats} / ${c.token})`).join('\n');
+  const remove=prompt(`Custom companies:\n${list}\n\nEnter number to remove (or cancel):`);
+  if(remove){
+    const idx=parseInt(remove)-1;
+    if(idx>=0&&idx<companies.length){
+      companies.splice(idx,1);
+      localStorage.setItem(LS_COMPANIES,JSON.stringify(companies));
+      showStatus('Company removed','green');
+    }
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   APPLY WIZARD
+══════════════════════════════════════════════════════════ */
+let wiz={jobIdx:null,job:null,step:1,jd:'',analysis:null,tweaks:[],letter:'',applied:false};
+
+function wizard(idx){
+  const j=allJobs[idx];if(!j)return;
+  wiz={jobIdx:idx,job:j,step:1,jd:j.fullJD||'',analysis:null,tweaks:[],letter:'',applied:false};
+  document.getElementById('wiz-job-title').textContent=j.title;
+  document.getElementById('wiz-job-co').textContent=j.company+' · '+j.location;
+  const jdBox=document.getElementById('wp1-jd');
+  jdBox.value=wiz.jd;updateJdCount();
+  document.getElementById('wp1-note').style.display=wiz.jd?'block':'none';
+  wizSetStep(1);
+  ['wp1','wp2','wp3','wp4'].forEach((id,i)=>{
+    document.getElementById(id).className='wiz-panel'+(i===0?' active':'');
+  });
+  document.getElementById('wp4-log').style.display='none';
+  document.getElementById('wp4-btn').disabled=false;
+  document.getElementById('wp4-btn').textContent='✓ MARK AS APPLIED & LOG';
+  document.getElementById('wiz-overlay').classList.add('open');
+}
+function wizClose(){document.getElementById('wiz-overlay').classList.remove('open');}
+function wizBgClose(e){if(e.target===document.getElementById('wiz-overlay'))wizClose();}
+
+function wizSetStep(n){
+  wiz.step=n;
+  [1,2,3,4].forEach(i=>{
+    document.getElementById('wd'+i).className='ws-dot'+(i<n?' done':i===n?' active':'');
+  });
+  [1,2,3].forEach(i=>{
+    document.getElementById('wl'+i).className='ws-line'+(i<n?' done':'');
+  });
+  document.getElementById('wiz-back').style.display=n>1?'block':'none';
+  const nb=document.getElementById('wiz-next');
+  if(n===4){nb.style.display='none';}
+  else{nb.style.display='block';nb.textContent=n===3?'CONTINUE →':'NEXT →';}
+  const hints=['Paste the full job description','Review gaps and edit tweaks','Edit your cover letter','Download and log your application'];
+  document.getElementById('wiz-hint').textContent='Step '+n+' of 4 — '+hints[n-1];
+}
+
+function showPanel(n){
+  ['wp1','wp2','wp3','wp4'].forEach((id,i)=>{
+    document.getElementById(id).className='wiz-panel'+(i===n-1?' active':'');
+  });
+  wizSetStep(n);
+}
+
+async function wizNext(){
+  if(wiz.step===1){
+    const jd=document.getElementById('wp1-jd').value.trim();
+    if(!jd){alert('Please paste the job description first.');return;}
+    wiz.jd=jd;showPanel(2);await runGapAnalysis();
+  }else if(wiz.step===2){
+    wiz.tweaks=[];
+    document.querySelectorAll('.tweak-new').forEach(ta=>{
+      wiz.tweaks.push({section:ta.dataset.section,text:ta.value.trim()});
+    });
+    showPanel(3);await runCoverLetter();
+  }else if(wiz.step===3){
+    wiz.letter=document.getElementById('wp3-letter').value.trim();
+    showPanel(4);
+  }
+}
+function wizBack(){if(wiz.step>1)showPanel(wiz.step-1);}
+function updateJdCount(){document.getElementById('wp1-count').textContent=document.getElementById('wp1-jd').value.length;}
+function updateWordCount(){
+  const v=document.getElementById('wp3-letter').value;
+  document.getElementById('wp3-wc').textContent=v.trim().split(/\s+/).filter(w=>w).length;
+}
+
+async function runGapAnalysis(){
+  document.getElementById('wp2-loading').style.display='block';
+  document.getElementById('wp2-content').style.display='none';
+  const prompt=`Expert SAP career coach. Compare JD vs resume.
+JD: ${wiz.jd}
+RESUME: ${FULL_RESUME}
+Reply ONLY as raw JSON (no markdown):
+{"matches":["string"],"gaps":[{"gap":"","suggestion":""}],"keywords":["string"],"tweaks":[{"section":"summary|bullet","label":"","original":"","suggested":""}]}
+Rules: 3-6 matches, 2-5 gaps with specific suggestions, 3-8 keywords, 2-4 tweaks.`;
+  try{
+    const txt=await gemini(prompt,false);
+    wiz.analysis=extractJSON(txt,'obj');
+    renderAnalysis();
+  }catch(err){
+    document.getElementById('wp2-loading').style.display='none';
+    document.getElementById('wp2-content').style.display='block';
+    document.getElementById('wp2-matches').innerHTML=`<div style="color:#B02020;font-size:11px">Error: ${esc(err.message)}</div>`;
+  }
+}
+
+function renderAnalysis(){
+  const a=wiz.analysis||{};
+  document.getElementById('wp2-loading').style.display='none';
+  document.getElementById('wp2-content').style.display='block';
+  document.getElementById('wp2-matches').innerHTML=(a.matches||[]).map(m=>`<div class="gap-match-item">${esc(m)}</div>`).join('')||'<div style="color:#888;font-size:11px">No analysis available</div>';
+  document.getElementById('wp2-gaps').innerHTML=(a.gaps||[]).length
+    ?(a.gaps).map(g=>`<div class="gap-warn-item"><div class="gap-warn-label">${esc(g.gap)}</div><div class="gap-warn-sug">${esc(g.suggestion)}</div></div>`).join('')
+    :'<div style="color:#2ea86a;font-size:11px">✓ No significant gaps — strong match</div>';
+  document.getElementById('wp2-kw').innerHTML=(a.keywords||[]).map(k=>`<span class="kw-tag">${esc(k)}</span>`).join('');
+  document.getElementById('wp2-tweaks').innerHTML=(a.tweaks||[]).map(t=>`
+    <div class="tweak-box">
+      <div class="tweak-section-label">${esc(t.label||t.section)}</div>
+      <div class="tweak-old">${esc(t.original)}</div>
+      <textarea class="tweak-new" data-section="${esc(t.section)}" rows="3">${esc(t.suggested)}</textarea>
+    </div>`).join('');
+}
+
+async function runCoverLetter(){
+  document.getElementById('wp3-loading').style.display='block';
+  document.getElementById('wp3-content').style.display='none';
+  const tweakCtx=wiz.tweaks.length?'\n\nUSE THESE UPDATED RESUME LINES:\n'+wiz.tweaks.map(t=>`[${t.section}]: ${t.text}`).join('\n'):'';
+  const prompt=`Write a professional tailored cover letter.
+JOB: ${wiz.jd}
+RESUME: ${FULL_RESUME}${tweakCtx}
+Rules: 3 paragraphs, 250-300 words. Para 1: specific interest in company. Para 2: 3-4 concrete matches (cite Capgemini, Boston Scientific, UNFI, RICEFW, IDOCs, certs). Para 3: warm close, available to interview. Confident, professional, no buzzwords. English only.
+Start: "Dear Hiring Manager," End: "Kind regards,\nManasi Chaudhari"
+Output ONLY the letter text.`;
+  try{
+    const txt=await gemini(prompt,false);
+    wiz.letter=txt.trim();
+    document.getElementById('wp3-loading').style.display='none';
+    document.getElementById('wp3-content').style.display='block';
+    document.getElementById('wp3-letter').value=wiz.letter;
+    updateWordCount();
+  }catch(err){
+    document.getElementById('wp3-loading').style.display='none';
+    document.getElementById('wp3-content').style.display='block';
+    document.getElementById('wp3-letter').value='Error: '+err.message;
+  }
+}
+async function regenLetter(){wiz.letter='';await runCoverLetter();}
+
+function exportTxt(){
+  const letter=document.getElementById('wp3-letter')?.value||wiz.letter;
+  if(!letter)return;
+  const company=(wiz.job?.company||'company').replace(/[^a-zA-Z0-9]/g,'_');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([letter],{type:'text/plain'}));
+  a.download=`Manasi_Chaudhari_CoverLetter_${company}.txt`;
+  a.click();URL.revokeObjectURL(a.href);
+}
+
+function openGmail(){
+  const letter=document.getElementById('wp3-letter')?.value||wiz.letter;
+  if(!letter)return;
+  const subj=encodeURIComponent(`Application for ${wiz.job?.title} – ${wiz.job?.company} | Manasi Chaudhari`);
+  window.open(`https://mail.google.com/mail/?view=cm&su=${subj}&body=${encodeURIComponent(letter)}`,'_blank');
+}
+
+function markApplied(){
+  if(!wiz.job)return;
+  const k=sk(wiz.job);
+  jobStates[k]='applied';saveSt();
+  sheetUpsert(wiz.job,'applied');
+  renderGrid();
+  document.getElementById('wp4-log').style.display='block';
+  const btn=document.getElementById('wp4-btn');
+  btn.disabled=true;btn.textContent='✓ APPLIED';btn.style.background='#2ea86a';
+}
+
+/* ══════════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded',()=>{
+  loadCfg();
+  jobStates=loadSt();
+  // Save config on any input change
+  ['apikey-input','github-url','sheets-url'].forEach(id=>{
+    document.getElementById(id)?.addEventListener('change',saveCfg);
+  });
+  // Wire JD and letter counters
+  document.getElementById('wp1-jd')?.addEventListener('input',updateJdCount);
+  document.getElementById('wp3-letter')?.addEventListener('input',updateWordCount);
+});
+</script>
+</body>
+</html>

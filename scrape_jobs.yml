@@ -1,0 +1,64 @@
+name: SAP Job Scraper
+
+on:
+  schedule:
+    # 8:00 AM Berlin time (CET=UTC+1, CEST=UTC+2)
+    # Using UTC+1 as base (winter) — adjusts naturally in summer
+    - cron: '0 7 * * *'
+  workflow_dispatch:   # allows manual trigger from GitHub Actions UI
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to push jobs_latest.json back to repo
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install jobspy playwright pandas
+
+      - name: Install Playwright browsers
+        run: playwright install chromium --with-deps
+
+      - name: Run SAP job scraper
+        env:
+          LI_AT: ${{ secrets.LI_AT }}
+        run: python sap_jobspy.py
+
+      - name: Check output file
+        run: |
+          echo "Jobs found:"
+          python -c "
+          import json
+          with open('jobs_latest.json') as f:
+              d = json.load(f)
+          print(f'  Total: {d[\"total\"]}')
+          print(f'  Sources: {d[\"sources\"]}')
+          print(f'  Generated: {d[\"generated\"]}')
+          "
+
+      - name: Commit and push jobs_latest.json
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add jobs_latest.json
+          git diff --staged --quiet || git commit -m "chore: update jobs [$(date -u +%Y-%m-%dT%H:%M:%SZ)]"
+          git push
