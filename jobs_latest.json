@@ -1,7 +1,6 @@
 {
-  "generated": "placeholder — run GitHub Action or sap_jobspy.py to populate",
+  "generated": "2026-03-23T11:06:18.235761+00:00",
   "total": 0,
   "sources": [],
-  "jobs": [],
-  "_note": "This file is auto-updated daily by GitHub Actions (scrape_jobs.yml). To populate it manually: run sap_jobspy.py locally or trigger the workflow from GitHub Actions tab → SAP Job Scraper → Run workflow."
+  "jobs": []
 }
